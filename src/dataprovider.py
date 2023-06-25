@@ -10,19 +10,24 @@ def get_id():
     """
     :return: id of new user, which is max(id) + 1, if there is no user in database, return 1
     """
-    data = str(InteractDatabase.executequery("SELECT IFNULL(MAX(id),0) FROM portfolio"))
-    id = ''
-    for i in range(len(data)):
-        if data[i].isdigit():
-            id += data[i]
-    return str(int(id) + 1)
+    with InteractDatabase() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM portfolio")
+            count = cursor.fetchone()[0]
+            if count == 0:
+                return 1
+            else:
+                cursor.execute("SELECT MAX(id) FROM portfolio")
+                return cursor.fetchone()[0] + 1
+
 
 def ConvertForTuple_Exp_Edu(database):
     list_result = list()
     dict_temp = dict()
     list_key = ["id", "portfolio_id", "title", "time", "content"]
     for item in database:
-        tuple_temp = [(list_key[0],item[0]), (list_key[1],item[1]), (list_key[2],item[2]), (list_key[3],item[3]), (list_key[4],item[4])]
+        tuple_temp = [(list_key[0], item[0]), (list_key[1], item[1]),
+                      (list_key[2], item[2]), (list_key[3], item[3]), (list_key[4], item[4])]
         dict_temp = dict(tuple_temp)
         list_result.append(dict_temp)
     return list_result
@@ -33,17 +38,20 @@ def ConvertForTuple_Services(database):
     dict_temp = dict()
     list_key = ["id", "portfolio_id", "title", "description"]
     for item in database:
-        tuple_temp = [(list_key[0],item[0]), (list_key[1],item[1]), (list_key[2],item[2]), (list_key[3],item[3])]
+        tuple_temp = [(list_key[0], item[0]), (list_key[1], item[1]),
+                      (list_key[2], item[2]), (list_key[3], item[3])]
         dict_temp = dict(tuple_temp)
         list_result.append(dict_temp)
     return list_result
+
 
 def ConvertForTuple_my_skills(database):
     list_result = list()
     dict_temp = dict()
     list_key = ["id", "portfolio_id", "skill", "value"]
     for item in database:
-        tuple_temp = [(list_key[0],item[0]), (list_key[1],item[1]), (list_key[2],item[2]), (list_key[3],item[3])]
+        tuple_temp = [(list_key[0], item[0]), (list_key[1], item[1]),
+                      (list_key[2], item[2]), (list_key[3], item[3])]
         dict_temp = dict(tuple_temp)
         list_result.append(dict_temp)
     return list_result
@@ -106,10 +114,11 @@ class InteractDatabase:
         add data portfolio to database
         :return: id of this portfolio
         """
-        #id = get_id()  # id of new user
-        parameter = model.Users.getuserlist(data_user)  # get data user with datatype: list
+        # id = get_id()  # id of new user
+        # get data user with datatype: list
+        parameter = model.Users.getuserlist(data_user)
         query = "INSERT INTO `portfolio` ( `name`, `nickname`,`texterea`, `gmail`, `phone`, `address`, `dateofbirth`, `linkedin`, `facebook`, `github`, `job`, `workingtime`, `introduction`) VALUES ( %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-        id =InteractDatabase.executenonquery(query, parameter)
+        id = InteractDatabase.executenonquery(query, parameter)
         return id
 
     @staticmethod
@@ -126,8 +135,8 @@ class InteractDatabase:
         with InteractDatabase():
             InteractDatabase.executenonquery(query, parameter)
 
-
     # parameter list_edu [id, title, time, content] ; list_exp [id, title, time, content]
+
     @staticmethod
     def save_edu(id, list_edu):
         # insert education
@@ -157,7 +166,6 @@ class InteractDatabase:
         for row in list_skill:
             parameter = (id, row['skill'], row['value'])
             InteractDatabase.executenonquery(query, parameter)
-
 
     @staticmethod
     def get_user_data_from_id(id):
@@ -207,10 +215,14 @@ class InteractDatabase:
                 introduction=temp[13],
             )
             path = temp[14]
-            education = ConvertForTuple_Exp_Edu( InteractDatabase.executequery("SELECT * FROM `education` WHERE `portfolio_id` = %s", (id,)) )
-            services = ConvertForTuple_Services( InteractDatabase.executequery("SELECT * FROM `services` WHERE `portfolio_id` = %s", (id,)) )
-            experience = ConvertForTuple_Exp_Edu( InteractDatabase.executequery("SELECT * FROM `experience` WHERE `portfolio_id` = %s", (id,)) )
-            skills = ConvertForTuple_my_skills( InteractDatabase.executequery("SELECT * FROM `my_skills` WHERE `portfolio_id` = %s", (id,)) )
+            education = ConvertForTuple_Exp_Edu(InteractDatabase.executequery(
+                "SELECT * FROM `education` WHERE `portfolio_id` = %s", (id,)))
+            services = ConvertForTuple_Services(InteractDatabase.executequery(
+                "SELECT * FROM `services` WHERE `portfolio_id` = %s", (id,)))
+            experience = ConvertForTuple_Exp_Edu(InteractDatabase.executequery(
+                "SELECT * FROM `experience` WHERE `portfolio_id` = %s", (id,)))
+            skills = ConvertForTuple_my_skills(InteractDatabase.executequery(
+                "SELECT * FROM `my_skills` WHERE `portfolio_id` = %s", (id,)))
             # if connection.is_connected():
             #     connection.close()
             return {
@@ -221,7 +233,6 @@ class InteractDatabase:
                 'experience': experience,
                 'skills': skills
             }
-
 
     @staticmethod
     def get_all_portfolio():
@@ -244,4 +255,3 @@ class InteractDatabase:
             InteractDatabase.save_services(id, data['services'])
             InteractDatabase.save_skills(id, data['skills'])
         return True
-
